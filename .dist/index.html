@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airplane in the Sky Animation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB, #FFFFFF);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="airplaneCanvas"></canvas>
+    <audio id="airplaneSound" src="/Airplane_-Sound_Effect__HD_(128k).m4a" loop></audio>
+    <audio id="birdSound" src="/FOREST_BIRDS___SOUND_EFFECTS___HIGH_QUALITY___NO_COPYRIGHT(128k).m4a" loop></audio>
+
+    <script>
+        const canvas = document.getElementById('airplaneCanvas');
+        const ctx = canvas.getContext('2d');
+        const airplaneSound = document.getElementById('airplaneSound');
+        const birdSound = document.getElementById('birdSound');
+
+        // Set canvas dimensions
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Load airplane image
+        const airplaneImage = new Image();
+        airplaneImage.src = '/plane.png'; // Ensure this image is in the same directory as the HTML file
+
+        airplaneImage.onerror = function() {
+            console.error('Failed to load airplane image');
+        };
+
+        // Airplane properties
+        const airplane = {
+            x: 100,
+            y: canvas.height / 4,
+            width: 200,
+            height: 100,
+            speed: 3
+        };
+
+        // Clouds properties
+        const clouds = [];
+        const cloudCount = 15;
+
+        // Birds properties
+        const birds = [];
+        const birdCount = 10;
+        const birdColors = ['black', 'gray', '#FFFFFF'];
+
+        // Trees properties
+        const trees = [];
+        const treeCount = 20;
+
+        // Sun properties
+        const sun = {
+            x: canvas.width / 4,
+            y: canvas.height / 6,
+            radius: 50,
+            speed: 0.5,
+            beamLength: 50, // Shorter sunbeams
+            beamWidth: 3
+        };
+
+        // Initialize clouds
+        function initClouds() {
+            for (let i = 0; i < cloudCount; i++) {
+                clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height / 2,
+                    speed: Math.random() * 0.5 + 0.5,
+                    width: Math.random() * 100 + 50,
+                    height: Math.random() * 30 + 30
+                });
+            }
+        }
+
+        // Initialize birds
+        function initBirds() {
+            for (let i = 0; i < birdCount; i++) {
+                birds.push({
+                    x: Math.random() * canvas.width,
+                    y: canvas.height * 0.65 + Math.random() * 50,
+                    speed: Math.random() * 2 + 1,
+                    size: Math.random() * 20 + 20,
+                    flapSpeed: Math.random() * 0.1 + 0.05,
+                    flapPhase: Math.random() * Math.PI * 2,
+                    direction: Math.random() > 0.5 ? 1 : -1,
+                    color: birdColors[Math.floor(Math.random() * birdColors.length)]
+                });
+            }
+        }
+
+        // Initialize trees
+        function initTrees() {
+            for (let i = 0; i < treeCount; i++) {
+                trees.push({
+                    x: Math.random() * canvas.width,
+                    y: canvas.height - (Math.random() * 100 + 50),
+                    width: Math.random() * 30 + 20,
+                    height: Math.random() * 50 + 50
+                });
+            }
+        }
+
+        // Function to draw the sun with a more realistic color and shorter beams
+        function drawSun() {
+            const gradient = ctx.createRadialGradient(sun.x, sun.y, sun.radius / 4, sun.x, sun.y, sun.radius);
+            gradient.addColorStop(0, 'rgba(255, 223, 0, 1)'); // Sun center (yellow)
+            gradient.addColorStop(0.7, 'rgba(255, 223, 0, 0.8)'); // Outer glow (light yellow)
+            gradient.addColorStop(1, 'rgba(255, 223, 0, 0)');   // Transparent edge
+
+            // Draw the sun
+            ctx.beginPath();
+            ctx.arc(sun.x, sun.y, sun.radius, 0, Math.PI * 2, false);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            ctx.closePath();
+
+            // Draw child-like features (e.g., simple smiley face)
+            ctx.save();
+            ctx.translate(sun.x, sun.y);
+            ctx.fillStyle = 'black';
+
+            // Eyes
+            ctx.beginPath();
+            ctx.arc(-sun.radius / 3, -sun.radius / 3, sun.radius / 10, 0, Math.PI * 2);
+            ctx.arc(sun.radius / 3, -sun.radius / 3, sun.radius / 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Smile
+            ctx.beginPath();
+            ctx.arc(0, sun.radius / 4, sun.radius / 3, 0, Math.PI, false);
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.restore();
+
+            // Draw glowing sun beams
+            for (let i = 0; i < 12; i++) {
+                const angle = i * (Math.PI * 2 / 12);
+                const xStart = sun.x + sun.radius * Math.cos(angle);
+                const yStart = sun.y + sun.radius * Math.sin(angle);
+                const xEnd = sun.x + (sun.radius + sun.beamLength) * Math.cos(angle);
+                const yEnd = sun.y + (sun.radius + sun.beamLength) * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.moveTo(xStart, yStart);
+                ctx.lineTo(xEnd, yEnd);
+                ctx.strokeStyle = `rgba(255, 223, 0, ${0.5 + Math.random() * 0.5})`; // Dynamic opacity
+                ctx.lineWidth = sun.beamWidth;
+                ctx.stroke();
+                ctx.closePath();
+            }
+        }
+
+        // Function to update the sun's position
+        function updateSun() {
+            sun.x += sun.speed;
+            if (sun.x > canvas.width + sun.radius) {
+                sun.x = -sun.radius;
+                sun.y = canvas.height / 6 + Math.random() * 50; // Optionally change vertical position
+            }
+        }
+
+        // Function to draw clouds
+        function drawClouds() {
+            clouds.forEach(cloud => {
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.width / 6, 0, Math.PI * 2, true);
+                ctx.arc(cloud.x + cloud.width / 4, cloud.y, cloud.width / 5, 0, Math.PI * 2, true);
+                ctx.arc(cloud.x - cloud.width / 4, cloud.y, cloud.width / 5, 0, Math.PI * 2, true);
+                ctx.arc(cloud.x, cloud.y - cloud.height / 4, cloud.width / 5, 0, Math.PI * 2, true);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.closePath();
+                
+                cloud.x -= cloud.speed;
+                if (cloud.x < -cloud.width) {
+                    cloud.x = canvas.width + cloud.width;
+                    cloud.y = Math.random() * canvas.height / 2;
+                }
+            });
+        }
+
+        // Function to draw birds
+        function drawBirds() {
+            birds.forEach(bird => {
+                ctx.save();
+                ctx.translate(bird.x, bird.y);
+                ctx.scale(bird.direction, 1);
+
+                // Draw bird body
+                ctx.beginPath();
+                ctx.ellipse(0, 0, bird.size / 2, bird.size / 4, 0, 0, Math.PI * 2);
+                ctx.fillStyle = bird.color;
+                ctx.fill();
+
+                // Draw bird wings
+                const wingOffset = Math.sin(bird.flapPhase) * bird.size / 2;
+                ctx.beginPath();
+                ctx.moveTo(-bird.size / 2, 0);
+                ctx.lineTo(0, -wingOffset);
+                ctx.lineTo(bird.size / 2, 0);
+                ctx.fillStyle = bird.color;
+                ctx.fill();
+
+                // Draw bird tail
+                ctx.beginPath();
+                ctx.moveTo(-bird.size / 2, 0);
+                ctx.lineTo(-bird.size / 1.5, -bird.size / 8);
+                ctx.lineTo(-bird.size / 1.5, bird.size / 8);
+                ctx.closePath();
+                ctx.fillStyle = bird.color;
+                ctx.fill();
+
+                // Draw bird head
+                ctx.beginPath();
+                ctx.arc(bird.size / 2.5, 0, bird.size / 6, 0, Math.PI * 2);
+                ctx.fillStyle = bird.color;
+                ctx.fill();
+
+                ctx.restore();
+
+                // Update bird position
+                bird.x += bird.speed * bird.direction;
+                bird.flapPhase += bird.flapSpeed;
+
+                if (bird.x < -bird.size || bird.x > canvas.width + bird.size) {
+                    bird.x = bird.direction > 0 ? -bird.size : canvas.width + bird.size;
+                    bird.y = canvas.height * 0.65 + Math.random() * 50;
+                    bird.flapPhase = Math.random() * Math.PI * 2;
+                }
+            });
+        }
+
+        // Function to draw trees
+        function drawTrees() {
+            trees.forEach(tree => {
+                // Draw tree trunk
+                ctx.fillStyle = '#8B4513'; // Brown color for trunk
+                ctx.fillRect(tree.x + tree.width / 4, tree.y, tree.width / 2, tree.height);
+
+                // Draw tree foliage as layered circles
+                ctx.fillStyle = '#228B22'; // Green color for foliage
+                ctx.beginPath();
+                ctx.arc(tree.x + tree.width / 2, tree.y - tree.height / 2, tree.width * 1.5, 0, Math.PI * 2);
+                ctx.arc(tree.x + tree.width / 2 - 20, tree.y - tree.height / 2 + 20, tree.width * 1.2, 0, Math.PI * 2);
+                ctx.arc(tree.x + tree.width / 2 + 20, tree.y - tree.height / 2 + 20, tree.width * 1.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        // Function to draw sandy ground
+        function drawSandyGround() {
+            ctx.beginPath();
+            ctx.rect(0, canvas.height * 0.9, canvas.width, canvas.height * 0.1);
+            ctx.fillStyle = '#F4A460'; // Sandy color
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Function to draw the airplane
+        function drawAirplane() {
+            ctx.save();
+            ctx.translate(airplane.x, airplane.y);
+            ctx.drawImage(airplaneImage, -airplane.width / 2, -airplane.height / 2, airplane.width, airplane.height);
+            ctx.restore();
+        }
+
+        // Function to update airplane's position
+        function updateAirplane() {
+            airplane.x += airplane.speed;
+
+            // Play airplane sound when airplane is fully on screen
+            if (airplane.x > -airplane.width && airplane.x < canvas.width) {
+                if (airplaneSound.paused) {
+                    airplaneSound.play();
+                }
+            } else {
+                airplaneSound.pause();
+                airplaneSound.currentTime = 0;
+            }
+
+            if (airplane.x > canvas.width + airplane.width) {
+                airplane.x = -airplane.width;
+            }
+        }
+
+        // Function to update bird sound
+        function updateBirdSound() {
+            if (birdSound.paused) {
+                birdSound.play();
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawSandyGround(); // Draw sandy ground first
+            drawTrees(); // Draw trees next
+            drawClouds();
+            drawBirds();
+            updateSun(); // Update sun position
+            drawSun(); // Draw sun with new features
+            updateAirplane();
+            drawAirplane();
+            updateBirdSound(); // Ensure bird sound is playing
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation after the images are loaded
+        airplaneImage.onload = function() {
+            initClouds();
+            initBirds();
+            initTrees();
+            animate();
+        };
+    </script>
+</body>
+</html>
